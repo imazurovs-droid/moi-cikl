@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Запрет любых сетевых запросов: данные никуда не отправляются -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob:; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'">
+<title>Мой цикл — личный дневник</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#b4407a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Мой цикл">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{
+  --bg:#faf7f5; --card:#fff; --ink:#2b2730; --ink2:#5d5765; --muted:#8c8594; --line:#e7e1e4;
+  --accent:#b4407a; --accent-soft:#f6e3ec;
+  --period:#d9486a; --period-soft:#fbe0e6; --fertile:#dff1e6; --fertile-ink:#2e7d52; --ovu:#2e9e62;
+  --peak:#c0265d; --high:#d88a1c; --low:#6b7787; --cline:#2f6fd6; --tline:#c0265d;
+  --warn-bg:#fff4dc; --warn-ink:#6b4a00;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.wrap{max-width:1000px;margin:0 auto;padding:0 14px}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 0}
+.top h1{font-size:19px;margin:0;color:var(--accent);font-weight:650}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;font:inherit;color:var(--ink2);cursor:pointer}
+nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav button:hover{background:#f3eef1}
+.warn{background:var(--warn-bg);color:var(--warn-ink);font-size:13px;padding:8px 12px;border-radius:8px;margin:12px 0;border:1px solid #f1dfae}
+main section{display:none} main section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.card h2{font-size:17px;margin:0 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:8px;font:inherit;cursor:pointer}
+.btn:hover{border-color:#cfc5cb}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:#b3261e;border-color:#efc7c4}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+label{font-size:13px;color:var(--ink2)}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid #d9d1d6;border-radius:8px;background:#fff;color:var(--ink)}
+textarea{width:100%;min-height:60px;resize:vertical}
+.field{display:flex;flex-direction:column;gap:3px}
+.muted{color:var(--muted);font-size:13px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stat .k{font-size:12.5px;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:650;margin-top:2px}
+.stat .s{font-size:12.5px;color:var(--ink2)}
+/* календарь */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.calhead .m{font-size:17px;font-weight:600}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .dow{text-align:center;font-size:12px;color:var(--muted);padding:2px 0}
+.day{position:relative;min-height:54px;border-radius:9px;background:#fbf9fa;border:1px solid transparent;cursor:pointer;padding:4px 6px;font-size:14px}
+.day:hover{border-color:#d8ccd3}
+.day.other{opacity:.38}
+.day.today{border:2px solid var(--ink)}
+.day.period{background:var(--period);color:#fff;font-weight:600}
+.day.pred{background:repeating-linear-gradient(135deg,var(--period-soft) 0 6px,#fff 6px 10px);border:1px dashed var(--period)}
+.day.fertile{background:var(--fertile)}
+.day.ovu{background:var(--fertile);box-shadow:inset 0 0 0 2px var(--ovu)}
+.day .tag{position:absolute;bottom:4px;left:6px;font-size:10.5px;font-weight:600;color:var(--ovu)}
+.day.period .tag{color:#fff}
+.day .dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;border:1.5px solid #fff}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12.5px;color:var(--ink2)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;color:var(--muted);font-weight:600}
+.badge{display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:600;color:#fff}
+.b-peak{background:var(--peak)} .b-high{background:var(--high)} .b-low{background:var(--low)} .b-invalid,.b-none{background:#9e9e9e}
+/* ЛГ */
+#editor{display:none}
+.edgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(250px,1fr);gap:16px}
+@media(max-width:760px){.edgrid{grid-template-columns:1fr}}
+.canvasbox{background:#efeaed;border-radius:10px;padding:6px;text-align:center}
+#edCanvas{max-width:100%;max-height:520px;border-radius:6px;cursor:crosshair}
+.hint{background:#eaf1fd;color:#1d4f9c;padding:8px 10px;border-radius:8px;font-size:13.5px;margin:8px 0}
+.bigres{font-size:22px;font-weight:700;margin:4px 0}
+.tests{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+.tcard{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff;cursor:pointer}
+.tcard:hover{border-color:#cdbfc7}
+.tcard img{width:100%;height:150px;object-fit:contain;border-radius:6px;display:block;background:#efeaed}
+.tcard .meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:13px}
+/* график */
+#chartBox{position:relative}
+#chartBox svg{width:100%;height:auto;display:block}
+.tip{position:absolute;pointer-events:none;background:#2b2730;color:#fff;font-size:12.5px;padding:6px 9px;border-radius:7px;white-space:nowrap;display:none;transform:translate(-50%,-115%)}
+/* модальное окно */
+.modal{position:fixed;inset:0;background:rgba(30,20,30,.38);display:none;align-items:center;justify-content:center;z-index:20;padding:12px}
+.modal.on{display:flex}
+.modal .box{background:#fff;border-radius:14px;padding:18px;max-width:440px;width:100%;max-height:92vh;overflow:auto}
+.modal h3{margin:0 0 12px;font-size:17px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#2b2730;color:#fff;padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:30}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 0 calc(24px + env(safe-area-inset-bottom))}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:560px){
+  body{font-size:15px}
+  .top{gap:6px;padding:8px 0}
+  nav{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}
+  nav button{padding:7px 9px;font-size:14px;white-space:nowrap;flex:none}
+  select{max-width:100%;width:100%}
+  .tcard .meta{flex-wrap:wrap;gap:4px}
+  .card{padding:12px}
+  .day{min-height:46px;padding:3px 4px;font-size:13px}
+  .day .tag{font-size:8.5px;left:3px;bottom:2px}
+  .summary{grid-template-columns:1fr 1fr}
+  .stat .v{font-size:17px}
+  th,td{padding:6px 5px;font-size:13px}
+  .tests{grid-template-columns:1fr 1fr}
+  input,select,textarea{font-size:16px} /* iPhone не увеличивает страницу при вводе */
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <h1>🌸 Мой цикл</h1>
+    <nav id="nav">
+      <button data-v="cal" class="on">Календарь</button>
+      <button data-v="fc">Прогноз</button>
+      <button data-v="lh">ЛГ-тесты</button>
+      <button data-v="chart">График ЛГ</button>
+      <button data-v="data">Данные</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="warn">⚠️ <b>Это не медицинское изделие.</b> Все прогнозы и расшифровка фото тестов — приблизительная оценка, а не диагноз. Приложение <b>не подходит для контрацепции</b> (защиты от беременности). При сомнениях, болях или нерегулярном цикле обратитесь к врачу. Данные хранятся только на этом устройстве, в этом браузере.</div>
+
+  <!-- КАЛЕНДАРЬ -->
+  <section id="v-cal" class="on">
+    <div class="summary" id="sumTop"></div>
+    <div class="card">
+      <div class="calhead">
+        <button class="btn small" id="prevM">‹ Назад</button>
+        <div class="m" id="monthTitle"></div>
+        <div class="row"><button class="btn small" id="todayM">Сегодня</button><button class="btn small" id="nextM">Вперёд ›</button></div>
+      </div>
+      <div class="cal" id="cal"></div>
+      <div class="legend">
+        <span><i style="background:var(--period)"></i>Месячные</span>
+        <span><i style="background:repeating-linear-gradient(135deg,var(--period-soft) 0 4px,#fff 4px 7px);border:1px dashed var(--period)"></i>Ожидаемые месячные</span>
+        <span><i style="background:var(--fertile)"></i>Окно фертильности (оценка)</span>
+        <span><i style="background:var(--fertile);box-shadow:inset 0 0 0 2px var(--ovu)"></i>Вероятная овуляция</span>
+        <span><i style="background:var(--peak);border-radius:50%"></i>ЛГ-тест: пик</span>
+        <span><i style="background:var(--high);border-radius:50%"></i>высокий</span>
+        <span><i style="background:var(--low);border-radius:50%"></i>не пик</span>
+      </div>
+      <p class="muted" style="margin:10px 0 0">Нажмите на день, чтобы отметить начало или конец месячных.</p>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">История месячных</h2><button class="btn primary" id="addPeriod">+ Добавить месячные</button></div>
+      <div id="periodList" class="tscroll" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ПРОГНОЗ -->
+  <section id="v-fc">
+    <div class="card">
+      <h2>Прогноз</h2>
+      <p class="muted" style="margin-top:0">Расчёт по вашей истории: средняя длина цикла за последние (до 6) циклов. Овуляция считается примерно за 14 дней до следующих месячных; окно фертильности — 5 дней до неё и 1 день после. <b>Это оценка, а не диагноз</b>: реальная овуляция может сдвигаться на несколько дней.</p>
+      <div class="summary" id="fcStats"></div>
+      <div id="fcNotes" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Ближайшие циклы (оценка)</h2>
+      <div id="fcFuture" class="tscroll"></div>
+    </div>
+    <div class="card">
+      <h2>Прошедшие циклы</h2>
+      <div id="fcPast" class="tscroll"></div>
+    </div>
+  </section>
+
+  <!-- ЛГ-ТЕСТЫ -->
+  <section id="v-lh">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Фото ЛГ-тестов на овуляцию</h2>
+        <div class="row">
+          <button class="btn primary" id="addPhoto">📷 Добавить фото теста</button>
+          <input type="file" id="fileIn" accept="image/*" multiple hidden>
+        </div>
+      </div>
+      <p class="muted">Положите полоску на белый лист бумаги, <b>впитывающим концом (стрелками) влево</b> (или вверх). Тогда контрольная линия C будет правее (ниже) тестовой T. Если у вашей полоски наоборот — поменяйте настройку ниже или нажмите «Поменять C и T».</p>
+      <div class="row">
+        <label for="cSide">Где на фото контрольная линия C:</label>
+        <select id="cSide">
+          <option value="end">правее / ниже линии T (стрелки слева или сверху)</option>
+          <option value="start">левее / выше линии T</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card" id="editor">
+      <h2 id="edTitle">Новый тест</h2>
+      <div class="edgrid">
+        <div>
+          <div class="canvasbox"><canvas id="edCanvas"></canvas></div>
+          <div class="hint" id="edHint" style="display:none"></div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn small" id="edManual">✋ Указать линии вручную</button>
+            <button class="btn small" id="edSwap">⇄ Поменять C и T</button>
+            <button class="btn small" id="edAuto">🔍 Найти автоматически</button>
+          </div>
+        </div>
+        <div class="stack">
+          <div>
+            <div class="muted">Результат</div>
+            <div class="bigres" id="edRes">—</div>
+            <div id="edRatio" class="muted"></div>
+          </div>
+          <div class="field"><label for="edResSel">Исправить результат вручную</label>
+            <select id="edResSel">
+              <option value="">Как определило приложение</option>
+              <option value="peak">Пик ЛГ</option>
+              <option value="high">Высокий уровень</option>
+              <option value="low">Не пик</option>
+              <option value="invalid">Тест недействителен</option>
+            </select></div>
+          <div class="row">
+            <div class="field"><label for="edDate">Дата теста</label><input type="date" id="edDate"></div>
+            <div class="field"><label for="edTime">Время</label><input type="time" id="edTime"></div>
+          </div>
+          <div class="field"><label for="edNote">Заметка</label><textarea id="edNote" placeholder="Например: утро, после 4 часов без питья"></textarea></div>
+          <div class="row">
+            <button class="btn primary" id="edSave">Сохранить</button>
+            <button class="btn" id="edCancel">Отмена</button>
+            <button class="btn danger" id="edDelete" style="display:none">Удалить</button>
+          </div>
+          <div class="muted" id="edQueue"></div>
+        </div>
+      </div>
+      <p class="muted" style="margin-bottom:0">Как читать: <b>пик ЛГ</b> — линия T такая же яркая, как C, или ярче (T/C ≥ 0,9 с учётом погрешности фото). <b>Высокий уровень</b> — T заметна, но бледнее C (0,5–0,9). <b>Не пик</b> — T бледная или её нет (&lt; 0,5). Овуляция обычно наступает через 24–36 часов после пика ЛГ. Всегда сверяйтесь с инструкцией к вашему тесту.</p>
+    </div>
+
+    <div class="card">
+      <h2>Сохранённые тесты</h2>
+      <div class="tests" id="testList"></div>
+    </div>
+  </section>
+
+  <!-- ГРАФИК -->
+  <section id="v-chart">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Соотношение T/C по дням цикла</h2>
+        <select id="cycleSel"></select>
+      </div>
+      <p class="muted">Каждая точка — один тест. Рост к значению 0,9–1 и выше показывает приближение пика ЛГ. Пунктир «овуляция?» — расчётная оценка.</p>
+      <div id="chartBox"><div class="tip" id="tip"></div></div>
+      <div id="chartTable" class="tscroll" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ДАННЫЕ -->
+  <section id="v-data">
+    <div class="card">
+      <h2>Резервная копия</h2>
+      <p>Все записи и фото хранятся <b>только в этом браузере</b> (IndexedDB) на этом компьютере. Никуда не отправляются: у страницы запрещены любые сетевые запросы. Если очистить данные браузера или переустановить его — записи пропадут, поэтому иногда сохраняйте резервную копию.</p>
+      <div class="row">
+        <button class="btn primary" id="exportBtn">💾 Скачать резервную копию (JSON)</button>
+        <button class="btn" id="importBtn">📂 Загрузить из резервной копии</button>
+        <input type="file" id="importIn" hidden>
+      </div>
+      <p class="muted" id="dataInfo"></p>
+    </div>
+    <div class="card">
+      <h2>Удаление</h2>
+      <p class="muted">Удалит все месячные, тесты и фото из этого браузера. Отменить нельзя — сначала сделайте резервную копию.</p>
+      <button class="btn danger" id="wipeBtn">Удалить все данные</button>
+    </div>
+  </section>
+  <footer>Мой цикл · работает без интернета · данные остаются на вашем устройстве</footer>
+</main>
+
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ================= Утилиты дат ================= */
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const pad = n => String(n).padStart(2,'0');
+function toUTC(s){ const [y,m,d]=s.split('-').map(Number); return Date.UTC(y,m-1,d); }
+function fromUTC(t){ const d=new Date(t); return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
+function addDays(s,n){ return fromUTC(toUTC(s)+n*86400000); }
+function diffDays(a,b){ return Math.round((toUTC(a)-toUTC(b))/86400000); } // a - b
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function localDateStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function fmt(s){ if(!s) return '—'; const [y,m,d]=s.split('-').map(Number); return d+' '+MONTHS_G[m-1]+(y!==new Date().getFullYear()?' '+y:''); }
+function fmtShort(s){ const [y,m,d]=s.split('-'); return d+'.'+m; }
+function plural(n,a,b,c){ const m10=n%10,m100=n%100; return (m10===1&&m100!==11)?a:(m10>=2&&m10<=4&&(m100<10||m100>=20))?b:c; }
+function days(n){ return n+' '+plural(Math.abs(n),'день','дня','дней'); }
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const $ = id => document.getElementById(id);
+function toast(t){ const el=$('toast'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',2600); }
+
+/* ================= Хранилище (IndexedDB) ================= */
+const DB = {
+  db:null,
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open('moi-cikl',1);
+    r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('periods',{keyPath:'id'}); d.createObjectStore('tests',{keyPath:'id'}); d.createObjectStore('meta',{keyPath:'key'}); };
+    r.onsuccess=()=>{ this.db=r.result; res(); }; r.onerror=()=>rej(r.error); }); },
+  req(store,mode,fn){ return new Promise((res,rej)=>{ const tx=this.db.transaction(store,mode); const st=tx.objectStore(store); const r=fn(st); tx.oncomplete=()=>res(r&&r.result); tx.onerror=()=>rej(tx.error); }); },
+  all(s){ return this.req(s,'readonly',st=>st.getAll()); },
+  put(s,o){ return this.req(s,'readwrite',st=>st.put(o)); },
+  del(s,id){ return this.req(s,'readwrite',st=>st.delete(id)); },
+  clear(s){ return this.req(s,'readwrite',st=>st.clear()); }
+};
+const state = { periods:[], tests:[], settings:{cSide:'end'}, month:null, view:'cal' };
+async function loadAll(){
+  state.periods = (await DB.all('periods')).sort((a,b)=>a.start.localeCompare(b.start));
+  state.tests = (await DB.all('tests')).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const meta = await DB.all('meta'); const st = meta.find(m=>m.key==='settings'); if(st) Object.assign(state.settings, st.value);
+}
+async function saveSettings(){ await DB.put('meta',{key:'settings',value:state.settings}); }
+
+/* ================= Расчёты цикла ================= */
+const RES_TXT = {peak:'Пик ЛГ', high:'Высокий уровень', low:'Не пик', invalid:'Недействителен', none:'Линии не найдены'};
+const effRes = t => t.manualResult || t.autoResult || 'none';
+function mean(a){ return a.reduce((x,y)=>x+y,0)/a.length; }
+function periodLen(p){ return p.end ? diffDays(p.end,p.start)+1 : null; }
+
+function computeStats(){
+  const ps = state.periods; const today = todayStr();
+  const cycles = [];
+  for(let i=0;i<ps.length-1;i++) cycles.push({start:ps[i].start, end:addDays(ps[i+1].start,-1), length:diffDays(ps[i+1].start,ps[i].start), period:ps[i]});
+  const valid = cycles.filter(c=>c.length>=18 && c.length<=60).slice(-6);
+  const lens = valid.map(c=>c.length);
+  const avgCycle = lens.length ? Math.round(mean(lens)) : 28;
+  const sd = lens.length>1 ? Math.sqrt(mean(lens.map(l=>(l-mean(lens))**2))) : 0;
+  const plens = ps.map(periodLen).filter(l=>l && l>=1 && l<=14).slice(-6);
+  const avgPeriod = plens.length ? Math.round(mean(plens)) : 5;
+  const S = {cycles, validCount:lens.length, avgCycle, avgPeriod, sd, minC:lens.length?Math.min(...lens):null, maxC:lens.length?Math.max(...lens):null, defaultCycle:!lens.length, defaultPeriod:!plens.length, today};
+  if(!ps.length) return S;
+  const last = ps[ps.length-1];
+  S.last = last;
+  S.cycleDay = diffDays(today,last.start)+1;
+  S.nextStart = addDays(last.start, avgCycle);
+  S.late = diffDays(today,S.nextStart);
+  S.ovu = addDays(S.nextStart,-14);
+  S.fertStart = addDays(S.ovu,-5); S.fertEnd = addDays(S.ovu,1);
+  // ЛГ-пик в текущем цикле
+  const cur = state.tests.filter(t=>t.date>=last.start && effRes(t)==='peak');
+  if(cur.length){ S.lhPeak = cur[0].date; S.lhOvuFrom = addDays(S.lhPeak,1); S.lhOvuTo = addDays(S.lhPeak,2); }
+  // будущие циклы
+  S.future = [];
+  for(let k=0;k<3;k++){ const st=addDays(last.start,avgCycle*(k+1)); const ov=addDays(st,-14);
+    S.future.push({start:st, pEnd:addDays(st,avgPeriod-1), ovu:ov, fs:addDays(ov,-5), fe:addDays(ov,1)}); }
+  return S;
+}
+function cycleOf(date){ // цикл, к которому относится дата
+  const ps=state.periods; let idx=-1;
+  for(let i=0;i<ps.length;i++) if(ps[i].start<=date) idx=i;
+  if(idx<0) return null;
+  return {idx, start:ps[idx].start, next: ps[idx+1]?ps[idx+1].start:null, day:diffDays(date,ps[idx].start)+1};
+}
+
+/* ================= Разметка дней ================= */
+function dayInfo(d, S){
+  const info = {cls:[], tag:'', period:null};
+  for(const p of state.periods){
+    const end = p.end || addDays(p.start, S.avgPeriod-1);
+    if(d>=p.start && d<=end){ info.cls.push('period'); info.period=p; break; }
+  }
+  if(!info.period && S.last){
+    const lastEnd = S.last.end || addDays(S.last.start,S.avgPeriod-1);
+    // текущий цикл
+    if(d>lastEnd){
+      const blocks = [{ovu:S.ovu,fs:S.fertStart,fe:S.fertEnd}, ...S.future];
+      for(const f of S.future){ if(d>=f.start && d<=f.pEnd){ info.cls.push('pred'); break; } }
+      if(!info.cls.includes('pred')){
+        for(const b of blocks){
+          if(d===b.ovu){ info.cls.push('ovu'); info.tag='овуляция?'; break; }
+          if(d>=b.fs && d<=b.fe){ info.cls.push('fertile'); break; }
+        }
+      }
+    }
+  }
+  if(S.lhPeak && (d===S.lhOvuFrom || d===S.lhOvuTo) && !info.period){ info.cls=info.cls.filter(c=>c!=='fertile'&&c!=='pred'); if(!info.cls.includes('ovu')) info.cls.push('ovu'); info.tag='овуляция (ЛГ)'; }
+  return info;
+}
+
+/* ================= Календарь ================= */
+function renderCalendar(){
+  const S = computeStats();
+  if(!state.month){ const t=new Date(); state.month={y:t.getFullYear(), m:t.getMonth()}; }
+  const {y,m} = state.month;
+  $('monthTitle').textContent = MONTHS[m]+' '+y;
+  const first = new Date(y,m,1); const shift=(first.getDay()+6)%7;
+  const start = localDateStr(new Date(y,m,1-shift));
+  const today = todayStr();
+  const testsByDay = {}; for(const t of state.tests){ (testsByDay[t.date]=testsByDay[t.date]||[]).push(t); }
+  let h = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x=>`<div class="dow">${x}</div>`).join('');
+  for(let i=0;i<42;i++){
+    const d = addDays(start,i); const dm = Number(d.slice(5,7))-1;
+    const inf = dayInfo(d,S);
+    const cls = ['day',...inf.cls]; if(dm!==m) cls.push('other'); if(d===today) cls.push('today');
+    let dot=''; const ts=testsByDay[d];
+    if(ts){ const order=['peak','high','low','invalid','none']; const best=ts.map(effRes).sort((a,b)=>order.indexOf(a)-order.indexOf(b))[0];
+      const col={peak:'var(--peak)',high:'var(--high)',low:'var(--low)'}[best]||'#9e9e9e'; dot=`<span class="dot" style="background:${col}" title="ЛГ-тест: ${RES_TXT[best]}"></span>`; }
+    h += `<div class="${cls.join(' ')}" data-d="${d}">${Number(d.slice(8))}${dot}${inf.tag?`<span class="tag">${inf.tag}</span>`:''}</div>`;
+    if(i===34 && Number(addDays(start,35).slice(5,7))-1!==m) break;
+  }
+  $('cal').innerHTML = h;
+  renderSummary(S);
+  renderPeriodList(S);
+}
+function renderSummary(S){
+  let h='';
+  if(!S.last){ h = `<div class="stat" style="grid-column:1/-1"><div class="v" style="font-size:16px">Начните с отметки месячных</div><div class="s">Нажмите на день начала последних месячных в календаре или кнопку «+ Добавить месячные». Для прогноза лучше внести 2–3 прошлых цикла.</div></div>`; $('sumTop').innerHTML=h; return; }
+  h += `<div class="stat"><div class="k">Сегодня</div><div class="v">${S.cycleDay}-й день цикла</div><div class="s">цикл начался ${fmt(S.last.start)}</div></div>`;
+  if(S.late>0) h += `<div class="stat"><div class="k">Следующие месячные</div><div class="v" style="color:var(--period)">задержка ${days(S.late)}</div><div class="s">ожидались ${fmt(S.nextStart)} (оценка)</div></div>`;
+  else h += `<div class="stat"><div class="k">Следующие месячные ≈</div><div class="v">${fmt(S.nextStart)}</div><div class="s">${S.late===0?'сегодня':'через '+days(-S.late)} · оценка</div></div>`;
+  if(S.lhPeak) h += `<div class="stat"><div class="k">Овуляция по ЛГ-тесту ≈</div><div class="v">${fmt(S.lhOvuFrom)}–${fmt(S.lhOvuTo)}</div><div class="s">пик ЛГ ${fmt(S.lhPeak)}, +24–36 ч</div></div>`;
+  else h += `<div class="stat"><div class="k">Вероятная овуляция ≈</div><div class="v">${fmt(S.ovu)}</div><div class="s">окно фертильности ${fmt(S.fertStart)} – ${fmt(S.fertEnd)}</div></div>`;
+  h += `<div class="stat"><div class="k">Средний цикл</div><div class="v">${days(S.avgCycle)}</div><div class="s">${S.defaultCycle?'стандартное значение (мало данных)':'по '+S.validCount+' '+plural(S.validCount,'циклу','циклам','циклам')}</div></div>`;
+  $('sumTop').innerHTML = h;
+}
+const INT_TXT = {'':'—', light:'слабые', medium:'умеренные', heavy:'обильные'};
+function renderPeriodList(S){
+  const ps=[...state.periods].reverse();
+  if(!ps.length){ $('periodList').innerHTML='<p class="muted">Пока нет записей.</p>'; return; }
+  const next = {}; for(let i=0;i<state.periods.length-1;i++) next[state.periods[i].id]=diffDays(state.periods[i+1].start,state.periods[i].start);
+  $('periodList').innerHTML = `<table><tr><th>Начало</th><th>Конец</th><th>Длительность</th><th>Цикл</th><th>Интенсивность</th><th>Заметки</th><th></th></tr>`+
+    ps.map(p=>`<tr><td>${fmt(p.start)}</td><td>${p.end?fmt(p.end):'<span class="muted">не указан</span>'}</td><td>${p.end?days(periodLen(p)):'—'}</td><td>${next[p.id]?days(next[p.id]):'<span class="muted">текущий</span>'}</td><td>${INT_TXT[p.intensity||'']}</td><td>${esc(p.notes||'')}</td><td><button class="btn small" data-edit="${p.id}">Изменить</button></td></tr>`).join('')+'</table>';
+}
+
+/* ================= Модальные окна ================= */
+function openModal(html){ $('modalBox').innerHTML=html; $('modal').classList.add('on'); }
+function closeModal(){ $('modal').classList.remove('on'); }
+$('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+
+function dayModal(d){
+  const S = computeStats(); const inf = dayInfo(d,S);
+  const real = state.periods.find(p=>p.end ? (d>=p.start&&d<=p.end) : d===p.start);
+  const open = [...state.periods].reverse().find(p=>!p.end && p.start<d && diffDays(d,p.start)<=14);
+  const recent = [...state.periods].reverse().find(p=>p.start<d && diffDays(d,p.start)<=14);
+  let h = `<h3>${fmt(d)}</h3><div class="stack">`;
+  const cy = cycleOf(d); if(cy) h += `<div class="muted">${cy.day}-й день цикла</div>`;
+  if(inf.period){
+    h += `<div>Месячные: ${fmt(inf.period.start)} – ${inf.period.end?fmt(inf.period.end):'конец не указан'}</div>`;
+    h += `<button class="btn primary" data-act="edit" data-id="${inf.period.id}">Изменить эту запись</button>`;
+    if(inf.period.start!==d) h += `<button class="btn" data-act="setend" data-id="${inf.period.id}">Месячные закончились в этот день</button>`;
+  } else {
+    h += `<button class="btn primary" data-act="start">Месячные начались в этот день</button>`;
+    if(open || recent) h += `<button class="btn" data-act="setend" data-id="${(open||recent).id}">Месячные закончились в этот день (начались ${fmt((open||recent).start)})</button>`;
+  }
+  const ts = state.tests.filter(t=>t.date===d);
+  if(ts.length) h += `<div class="muted">ЛГ-тесты в этот день: ${ts.map(t=>RES_TXT[effRes(t)]+(t.ratio!=null?' (T/C '+t.ratio.toFixed(2)+')':'')).join(', ')}</div>`;
+  h += `<button class="btn" data-act="lh">📷 Добавить фото ЛГ-теста за этот день</button>`;
+  h += `<button class="btn" data-act="close">Закрыть</button></div>`;
+  openModal(h);
+  $('modalBox').onclick = async e=>{
+    const b=e.target.closest('[data-act]'); if(!b) return; const act=b.dataset.act;
+    if(act==='close') closeModal();
+    if(act==='start') periodModal({start:d,end:'',intensity:'',notes:''});
+    if(act==='edit') periodModal(state.periods.find(p=>p.id===b.dataset.id));
+    if(act==='setend'){ const p={...state.periods.find(x=>x.id===b.dataset.id)}; p.end=d; await DB.put('periods',p); closeModal(); await refresh(); toast('Конец месячных отмечен'); }
+    if(act==='lh'){ closeModal(); pendingDate=d; showView('lh'); $('fileIn').click(); }
+  };
+  void real;
+}
+function periodModal(p){
+  const isNew = !p.id;
+  openModal(`<h3>${isNew?'Новые месячные':'Изменить месячные'}</h3><div class="stack">
+    <div class="row"><div class="field"><label>Начало</label><input type="date" id="pmStart" value="${p.start||''}"></div>
+    <div class="field"><label>Конец (можно позже)</label><input type="date" id="pmEnd" value="${p.end||''}"></div></div>
+    <div class="field"><label>Интенсивность (по желанию)</label><select id="pmInt">
+      ${Object.entries(INT_TXT).map(([k,v])=>`<option value="${k}" ${k===(p.intensity||'')?'selected':''}>${k?v:'не указывать'}</option>`).join('')}</select></div>
+    <div class="field"><label>Заметки</label><textarea id="pmNotes" placeholder="Самочувствие, боль, лекарства…">${esc(p.notes||'')}</textarea></div>
+    <div class="muted" id="pmErr" style="color:#b3261e"></div>
+    <div class="row"><button class="btn primary" id="pmSave">Сохранить</button><button class="btn" id="pmCancel">Отмена</button>
+    ${isNew?'':'<button class="btn danger" id="pmDel">Удалить</button>'}</div></div>`);
+  $('modalBox').onclick=null;
+  $('pmCancel').onclick=closeModal;
+  if(!isNew) $('pmDel').onclick=async()=>{ if(!confirm('Удалить эту запись о месячных?')) return; await DB.del('periods',p.id); closeModal(); await refresh(); toast('Запись удалена'); };
+  $('pmSave').onclick=async()=>{
+    const start=$('pmStart').value, end=$('pmEnd').value;
+    if(!start){ $('pmErr').textContent='Укажите дату начала.'; return; }
+    if(end && end<start){ $('pmErr').textContent='Конец не может быть раньше начала.'; return; }
+    if(end && diffDays(end,start)>14){ $('pmErr').textContent='Месячные длиннее 15 дней — проверьте даты (и стоит обратиться к врачу).'; return; }
+    const clash = state.periods.find(o=>o.id!==p.id && Math.abs(diffDays(o.start,start))<12);
+    if(clash && !confirm(`Уже есть месячные, начавшиеся ${fmt(clash.start)} — меньше 12 дней разницы. Всё равно сохранить?`)) return;
+    await DB.put('periods',{id:p.id||uid(), start, end:end||'', intensity:$('pmInt').value, notes:$('pmNotes').value.trim()});
+    closeModal(); await refresh(); toast('Сохранено');
+  };
+}
+
+/* ================= Прогноз ================= */
+function renderForecast(){
+  const S = computeStats();
+  if(!S.last){ $('fcStats').innerHTML='<p class="muted">Добавьте хотя бы одни месячные в календаре.</p>'; $('fcNotes').innerHTML=''; $('fcFuture').innerHTML=''; $('fcPast').innerHTML=''; return; }
+  const st = (k,v,s)=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s||''}</div></div>`;
+  $('fcStats').innerHTML =
+    st('Средняя длина цикла', days(S.avgCycle), S.defaultCycle?'нужно ≥ 2 записей, пока 28 дней':(S.minC===S.maxC?'':'от '+S.minC+' до '+S.maxC+' дн.')) +
+    st('Средняя длина месячных', days(S.avgPeriod), S.defaultPeriod?'стандартное значение, укажите даты конца':'') +
+    st('Сейчас', S.cycleDay+'-й день цикла', 'с '+fmt(S.last.start)) +
+    st('Следующие месячные ≈', fmt(S.nextStart), S.late>0?'<b style="color:var(--period)">задержка '+days(S.late)+'</b>':(S.late===0?'сегодня':'через '+days(-S.late))) +
+    st('Окно фертильности ≈', fmt(S.fertStart)+' – '+fmt(S.fertEnd), 'текущий цикл') +
+    st('Вероятная овуляция ≈', fmt(S.ovu), 'за ~14 дней до месячных') +
+    (S.lhPeak? st('По ЛГ-тесту', fmt(S.lhOvuFrom)+' – '+fmt(S.lhOvuTo), 'пик ЛГ '+fmt(S.lhPeak)+' → овуляция обычно через 24–36 ч'):'');
+  const notes=[];
+  if(S.defaultCycle) notes.push('Пока мало данных: прогноз построен на стандартном цикле 28 дней. Отметьте ещё несколько месячных — точность вырастет.');
+  if(S.sd>4) notes.push('Длина ваших циклов заметно меняется (разброс ±'+S.sd.toFixed(1)+' дн.), поэтому прогноз менее точен. ЛГ-тесты помогут уточнить овуляцию.');
+  if(S.minC && (S.minC<21 || S.maxC>35)) notes.push('Некоторые циклы короче 21 или длиннее 35 дней. Это стоит обсудить с гинекологом.');
+  if(S.late>7) notes.push('Задержка больше недели. Если есть вероятность беременности — сделайте тест на беременность; при сомнениях обратитесь к врачу.');
+  if(new Date(S.ovu) < new Date(S.today) && !S.lhPeak && S.late<=0) notes.push('Расчётная овуляция в этом цикле, скорее всего, уже прошла.');
+  notes.push('Напоминание: это оценка по календарю, а не диагноз. Не используйте её для защиты от беременности.');
+  $('fcNotes').innerHTML = notes.map(n=>`<div class="hint" style="background:#f7f1f4;color:var(--ink2)">${n}</div>`).join('');
+  $('fcFuture').innerHTML = `<table><tr><th>Окно фертильности ≈</th><th>Овуляция ≈</th><th>Затем месячные ≈</th></tr>`+
+    S.future.map((f,i)=>`<tr><td>${fmt(f.fs)} – ${fmt(f.fe)}${i===0?' <span class="muted">(текущий цикл)</span>':''}</td><td>${fmt(f.ovu)}</td><td>${fmt(f.start)}</td></tr>`).join('') + '</table>';
+  if(!S.cycles.length){ $('fcPast').innerHTML='<p class="muted">Завершённых циклов пока нет.</p>'; return; }
+  $('fcPast').innerHTML = `<table><tr><th>Начало цикла</th><th>Длина цикла</th><th>Месячные</th><th>Пик ЛГ</th></tr>`+
+    [...S.cycles].reverse().map(c=>{ const pk=state.tests.find(t=>t.date>=c.start&&t.date<=c.end&&effRes(t)==='peak');
+      return `<tr><td>${fmt(c.start)}</td><td>${days(c.length)}${(c.length<18||c.length>60)?' <span class="muted">(не учтён)</span>':''}</td><td>${c.period.end?days(periodLen(c.period)):'—'}</td><td>${pk?fmt(pk.date)+' ('+(diffDays(pk.date,c.start)+1)+'-й день)':'—'}</td></tr>`; }).join('')+'</table>';
+}
+
+/* ================= Анализ фото ЛГ-теста ================= */
+// Карта «красноты»: линии ЛГ-тестов розово-фиолетовые, у них R заметно больше G.
+// Белый фон, серые тени и синие надписи дают ~0.
+function redMap(ctx,W,H){
+  const d=ctx.getImageData(0,0,W,H).data; const S=new Float32Array(W*H);
+  for(let i=0,j=0;i<S.length;i++,j+=4){ const v=d[j]-d[j+1]; S[i]=v>0?v:0; }
+  return S;
+}
+function profileAlong(A,axis,p0,p1){
+  const {S,W,H}=A; const L=axis==='x'?W:H, P=axis==='x'?H:W;
+  p0=Math.max(0,Math.floor(p0)); p1=Math.min(P-1,Math.ceil(p1)); const n=Math.max(1,p1-p0+1);
+  const pr=new Float32Array(L);
+  if(axis==='x'){ for(let y=p0;y<=p1;y++){ const r=y*W; for(let x=0;x<W;x++) pr[x]+=S[r+x]; } }
+  else { for(let y=0;y<H;y++){ const r=y*W; let s=0; for(let x=p0;x<=p1;x++) s+=S[r+x]; pr[y]=s; } }
+  for(let i=0;i<L;i++) pr[i]/=n; return pr;
+}
+function profilePerp(A,axis,a0,a1){
+  const {S,W,H}=A; const L=axis==='x'?W:H, P=axis==='x'?H:W;
+  a0=Math.max(0,Math.floor(a0)); a1=Math.min(L-1,Math.ceil(a1)); const n=Math.max(1,a1-a0+1);
+  const q=new Float32Array(P);
+  if(axis==='x'){ for(let y=0;y<H;y++){ const r=y*W; let s=0; for(let x=a0;x<=a1;x++) s+=S[r+x]; q[y]=s/n; } }
+  else { for(let y=a0;y<=a1;y++){ const r=y*W; for(let x=0;x<W;x++) q[x]+=S[r+x]/n; } }
+  return q;
+}
+function smooth(p,r){ if(r<1) return p; const L=p.length,o=new Float32Array(L); for(let i=0;i<L;i++){ let s=0,c=0; for(let k=i-r;k<=i+r;k++) if(k>=0&&k<L){s+=p[k];c++;} o[i]=s/c; } return o; }
+function slide(p,r,fn){ const L=p.length,o=new Float32Array(L); for(let i=0;i<L;i++){ let v=p[i]; for(let k=Math.max(0,i-r);k<=Math.min(L-1,i+r);k++) v=fn(v,p[k]); o[i]=v; } return o; }
+function tophat(p,r){ const op=slide(slide(p,r,Math.min),r,Math.max); const o=new Float32Array(p.length); for(let i=0;i<p.length;i++) o[i]=Math.max(0,p[i]-op[i]); return o; }
+function median(a){ const s=Array.from(a).sort((x,y)=>x-y); return s.length?s[s.length>>1]:0; }
+function noiseOf(th){ const m=median(th); return 1.4826*median(Array.from(th,v=>Math.abs(v-m)))+m*0.5+0.15; }
+function findPeaks(th,minDist,thr){
+  const c=[]; for(let i=1;i<th.length-1;i++) if(th[i]>thr && th[i]>=th[i-1] && th[i]>th[i+1]) c.push(i);
+  c.sort((a,b)=>th[b]-th[a]); const keep=[];
+  for(const i of c) if(keep.every(k=>Math.abs(k-i)>=minDist)) keep.push(i);
+  return keep;
+}
+function halfWidth(pr,pos,L){
+  const lo=Math.max(0,pos-Math.round(L*0.05)), hi=Math.min(L-1,pos+Math.round(L*0.05));
+  let bg=Infinity; for(let i=lo;i<=hi;i++) bg=Math.min(bg,pr[i]);
+  const half=bg+(pr[pos]-bg)/2; let l=pos,r=pos;
+  while(l>lo && pr[l]>half) l--; while(r<hi && pr[r]>half) r++;
+  return Math.max(2, Math.min(Math.round(L*0.04), Math.round((r-l)/2*1.3)));
+}
+// Яркость линии: пик профиля в окне линии минус фон рядом с линией
+function measure(A,axis,pos,band,hw){
+  const L=axis==='x'?A.W:A.H;
+  const pr=smooth(profileAlong(A,axis,band[0],band[1]),1);
+  let best=-1,bp=Math.round(pos);
+  for(let i=Math.max(0,Math.round(pos-hw));i<=Math.min(L-1,Math.round(pos+hw));i++) if(pr[i]>best){best=pr[i];bp=i;}
+  const flank=(a,b)=>{ a=Math.max(0,Math.round(a)); b=Math.min(L-1,Math.round(b)); if(b-a<1) return null; const v=[]; for(let i=a;i<=b;i++) v.push(pr[i]); return median(v); };
+  const fl=[flank(bp-4*hw,bp-2*hw),flank(bp+2*hw,bp+4*hw)].filter(v=>v!=null);
+  const bg=fl.length?Math.min(...fl):0;
+  return {value:Math.max(0,best-bg), pos:bp};
+}
+function bandAround(A,axis,pos,hw,perpHint){
+  const P=axis==='x'?A.H:A.W; const q=profilePerp(A,axis,pos-hw,pos+hw);
+  const base=median(q); let mi=perpHint!=null?Math.round(perpHint):0, mx=-1;
+  if(perpHint==null){ for(let i=0;i<P;i++) if(q[i]>mx){mx=q[i];mi=i;} } else mx=q[mi];
+  const lvl=base+(Math.max(...q)-base)*0.4; let a=mi,b=mi;
+  while(a>0 && q[a-1]>lvl) a--; while(b<P-1 && q[b+1]>lvl) b++;
+  if(b-a<6) return perpHint!=null?[Math.max(0,perpHint-P*0.12),Math.min(P-1,perpHint+P*0.12)]:[0,P-1];
+  const m=Math.round((b-a)*0.1); return [a+m,b-m];
+}
+function analyzeAuto(A,cSide){
+  let best=null;
+  for(const axis of ['x','y']){
+    const L=axis==='x'?A.W:A.H, P=axis==='x'?A.H:A.W;
+    const pr=smooth(profileAlong(A,axis,0,P-1),Math.max(1,Math.round(L*0.004)));
+    const th=tophat(pr,Math.round(L*0.06)); const nz=noiseOf(th);
+    const pk=findPeaks(th,L*0.03,nz*5);
+    const score=pk.length?th[pk[0]]/nz:0;
+    if(!best||score>best.score) best={axis,score,pk,pr,L};
+  }
+  if(!best || best.score<6) return null;
+  const {axis,L}=best;
+  let hw=halfWidth(best.pr,best.pk[0],L);
+  const band=bandAround(A,axis,best.pk[0],hw,null);
+  // повтор в найденной полосе — сильнее сигнал, меньше фона
+  const pr=smooth(profileAlong(A,axis,band[0],band[1]),Math.max(1,Math.round(L*0.004)));
+  const th=tophat(pr,Math.round(L*0.06)); const nz=noiseOf(th);
+  const pk=findPeaks(th,L*0.03,nz*4);
+  if(!pk.length) return null;
+  const a=pk[0];
+  const b=pk.find(p=>p!==a && Math.abs(p-a)>=L*0.03 && Math.abs(p-a)<=L*0.5 && th[p]>Math.max(nz*4, th[a]*0.03));
+  hw=halfWidth(pr,a,L);
+  let c,t=null;
+  if(b==null) c=a; else { const lo=Math.min(a,b), hi=Math.max(a,b); if(cSide==='end'){c=hi;t=lo;} else {c=lo;t=hi;} }
+  return {axis,band,hw,c,t,auto:true};
+}
+function evaluate(A,det){
+  if(!det) return {ratio:null,result:'none',cVal:0,tVal:0};
+  const cm=measure(A,det.axis,det.c,det.band,det.hw);
+  const tm=det.t!=null?measure(A,det.axis,det.t,det.band,det.hw):{value:0};
+  if(cm.value<2) return {ratio:null,result:'invalid',cVal:cm.value,tVal:tm.value};
+  const ratio=tm.value/cm.value;
+  return {ratio, result: ratio>=0.9?'peak':ratio>=0.5?'high':'low', cVal:cm.value, tVal:tm.value};
+}
+
+/* ================= Редактор теста ================= */
+let ED=null, queue=[], pendingDate=null;
+const edCanvas=$('edCanvas'), edCtx=edCanvas.getContext('2d',{willReadFrequently:true});
+
+function loadImage(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error('Не удалось открыть изображение')); im.src=src; }); }
+function makeWork(im){
+  const k=Math.min(1,1000/Math.max(im.naturalWidth,im.naturalHeight));
+  const W=Math.max(1,Math.round(im.naturalWidth*k)), H=Math.max(1,Math.round(im.naturalHeight*k));
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.drawImage(im,0,0,W,H);
+  return {cv,W,H,S:redMap(cx,W,H)};
+}
+function drawOverlay(ctx,scale,det,A){
+  if(!det) return;
+  const lw=Math.max(1.5,2*scale);
+  const one=(pos,col,label)=>{
+    ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.fillStyle=col; ctx.font=`bold ${Math.max(11,Math.round(16*scale))}px Segoe UI,Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    if(det.axis==='x'){ const x=(pos-det.hw)*scale, w=2*det.hw*scale, y=det.band[0]*scale, h=(det.band[1]-det.band[0])*scale;
+      ctx.strokeRect(x,y,w,h); const ty=y>18*scale?y-10*scale:y+h+10*scale; ctx.fillText(label,x+w/2,ty); }
+    else { const y=(pos-det.hw)*scale, h=2*det.hw*scale, x=det.band[0]*scale, w=(det.band[1]-det.band[0])*scale;
+      ctx.strokeRect(x,y,w,h); const tx=x>18*scale?x-10*scale:x+w+10*scale; ctx.fillText(label,tx,y+h/2); }
+  };
+  one(det.c,'#2f6fd6','C'); if(det.t!=null) one(det.t,'#e0207a','T');
+}
+function edDraw(){
+  if(!ED) return; edCanvas.width=ED.A.W; edCanvas.height=ED.A.H;
+  edCtx.drawImage(ED.A.cv,0,0); drawOverlay(edCtx,1,ED.det,ED.A);
+  if(ED.mode==='pickT' && ED.clickC){ edCtx.fillStyle='#2f6fd6'; edCtx.beginPath(); edCtx.arc(ED.clickC[0],ED.clickC[1],6,0,7); edCtx.fill(); }
+}
+function edUpdate(){
+  const ev=evaluate(ED.A,ED.det); ED.ev=ev;
+  const r=ev.result; const sel=$('edResSel').value; const shown=sel||r;
+  $('edRes').innerHTML=`<span class="badge b-${shown}" style="font-size:18px;padding:4px 14px">${RES_TXT[shown]}</span>`+(sel&&sel!==r?' <span class="muted" style="font-size:13px">(исправлено вручную; приложение: '+RES_TXT[r]+')</span>':'');
+  let t='';
+  if(ev.ratio!=null) t=`Соотношение T/C = <b>${ev.ratio.toFixed(2)}</b> (T ${ev.tVal.toFixed(1)} / C ${ev.cVal.toFixed(1)})`+(ED.det&&ED.det.t==null?' · линия T не видна':'');
+  else if(r==='none') t='Линии не найдены автоматически. Нажмите «Указать линии вручную».';
+  else if(r==='invalid') t='Контрольная линия C почти не видна — тест может быть недействителен. Проверьте фото или укажите линии вручную.';
+  $('edRatio').innerHTML=t+(ED.det?(ED.det.auto?' · найдено автоматически':' · указано вручную'):'');
+  edDraw();
+}
+async function openEditor(src, opts){
+  const im=await loadImage(src); const A=makeWork(im);
+  ED={A, id:opts.id||null, mode:'view', det:null, created:opts.created||Date.now()};
+  if(opts.det){ ED.det=opts.det; } else ED.det=analyzeAuto(A,state.settings.cSide);
+  $('edTitle').textContent=opts.id?'Тест от '+fmt(opts.date):'Новый тест';
+  $('edDate').value=opts.date||todayStr(); $('edTime').value=opts.time||''; $('edNote').value=opts.note||''; $('edResSel').value=opts.manualResult||'';
+  $('edDelete').style.display=opts.id?'':'none';
+  $('edQueue').textContent=queue.length?'После сохранения откроется следующее фото (осталось '+queue.length+')':'';
+  $('edHint').style.display='none';
+  $('editor').style.display='block'; edUpdate();
+  if(!ED.det){ startManual(); }
+  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function startManual(){ ED.mode='pickC'; ED.clickC=null; $('edHint').style.display='block'; $('edHint').textContent='Шаг 1 из 2: нажмите на фото на контрольную линию C.'; }
+edCanvas.addEventListener('click',e=>{
+  if(!ED || ED.mode==='view') return;
+  const r=edCanvas.getBoundingClientRect(); const x=(e.clientX-r.left)*edCanvas.width/r.width, y=(e.clientY-r.top)*edCanvas.height/r.height;
+  if(ED.mode==='pickC'){ ED.clickC=[x,y]; ED.mode='pickT'; $('edHint').textContent='Шаг 2 из 2: нажмите на тестовую линию T (если её не видно — туда, где она должна быть).'; edDraw(); return; }
+  if(ED.mode==='pickT'){ setManual(ED.clickC,[x,y]); }
+});
+function setManual(pc,pt){
+  const A=ED.A; const axis=Math.abs(pt[0]-pc[0])>=Math.abs(pt[1]-pc[1])?'x':'y';
+  const L=axis==='x'?A.W:A.H; const ai=axis==='x'?0:1, pi=1-ai;
+  let hw=Math.max(3,Math.round(Math.min(L*0.015, Math.abs(pt[ai]-pc[ai])/4)));
+  let band=bandAround(A,axis,pc[ai],hw,(pc[pi]+pt[pi])/2);
+  const pr=smooth(profileAlong(A,axis,band[0],band[1]),1);
+  const cm=measure(A,axis,pc[ai],band,hw); hw=Math.max(3,Math.min(halfWidth(pr,cm.pos,L), Math.round(Math.abs(pt[ai]-pc[ai])/3)||3));
+  const c2=measure(A,axis,pc[ai],band,hw).pos, t2=measure(A,axis,pt[ai],band,hw).pos;
+  ED.det={axis,band,hw,c:c2,t:t2,auto:false}; ED.mode='view'; $('edHint').style.display='none'; edUpdate();
+}
+$('edManual').onclick=()=>{ if(ED){ startManual(); edDraw(); } };
+$('edSwap').onclick=()=>{ if(!ED||!ED.det) return; if(ED.det.t==null){ toast('Найдена только одна линия — укажите линии вручную'); return; } const d=ED.det; [d.c,d.t]=[d.t,d.c]; edUpdate(); };
+$('edAuto').onclick=()=>{ if(!ED) return; ED.det=analyzeAuto(ED.A,state.settings.cSide); ED.mode='view'; $('edHint').style.display='none'; edUpdate(); if(!ED.det){ toast('Не удалось найти линии автоматически'); startManual(); } };
+$('edResSel').onchange=()=>ED&&edUpdate();
+function closeEditor(){ ED=null; $('editor').style.display='none'; }
+$('edCancel').onclick=()=>{ closeEditor(); nextInQueue(); };
+$('edDelete').onclick=async()=>{ if(!ED||!ED.id) return; if(!confirm('Удалить этот тест и его фото?')) return; await DB.del('tests',ED.id); closeEditor(); await refresh(); toast('Тест удалён'); };
+function makeThumb(A,det){
+  const k=Math.min(1,320/Math.max(A.W,A.H)); const cv=document.createElement('canvas'); cv.width=Math.round(A.W*k); cv.height=Math.round(A.H*k);
+  const cx=cv.getContext('2d'); cx.drawImage(A.cv,0,0,cv.width,cv.height); drawOverlay(cx,k,det,A); return cv.toDataURL('image/jpeg',0.8);
+}
+$('edSave').onclick=async()=>{
+  if(!ED) return; if(ED.mode!=='view'){ toast('Сначала закончите выбор линий'); return; }
+  const date=$('edDate').value; if(!date){ toast('Укажите дату теста'); return; }
+  const ev=ED.ev||evaluate(ED.A,ED.det);
+  const rec={ id:ED.id||uid(), date, time:$('edTime').value, note:$('edNote').value.trim(),
+    image:ED.A.cv.toDataURL('image/jpeg',0.88), thumb:makeThumb(ED.A,ED.det), w:ED.A.W, h:ED.A.H,
+    det:ED.det, ratio:ev.ratio, cVal:ev.cVal, tVal:ev.tVal, autoResult:ev.result, manualResult:$('edResSel').value||'', created:ED.created, updated:Date.now() };
+  await DB.put('tests',rec); closeEditor(); await refresh(); toast('Тест сохранён: '+RES_TXT[effRes(rec)]); nextInQueue();
+};
+function fileToDataURL(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(f); }); }
+async function handleFiles(files){
+  queue=[...files].filter(f=>f.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|gif|heic)$/i.test(f.name));
+  if(!queue.length){ toast('Выберите файл с фотографией'); return; }
+  await nextInQueue();
+}
+async function nextInQueue(){
+  const f=queue.shift(); if(!f) return;
+  const d=pendingDate || (f.lastModified?localDateStr(new Date(f.lastModified)):todayStr());
+  const tm=f.lastModified&&!pendingDate?new Date(f.lastModified):null;
+  pendingDate=null;
+  try{ await openEditor(await fileToDataURL(f),{date:d,time:tm?pad(tm.getHours())+':'+pad(tm.getMinutes()):''}); }
+  catch(e){ toast('Не удалось открыть «'+f.name+'». Попробуйте JPG или PNG.'); nextInQueue(); }
+}
+$('addPhoto').onclick=()=>$('fileIn').click();
+$('fileIn').onchange=e=>{ handleFiles(e.target.files); e.target.value=''; };
+$('cSide').onchange=async e=>{ state.settings.cSide=e.target.value; await saveSettings(); toast('Настройка сохранена'); };
+function renderTests(){
+  const ts=[...state.tests].reverse();
+  if(!ts.length){ $('testList').innerHTML='<p class="muted">Тестов пока нет.</p>'; return; }
+  $('testList').innerHTML=ts.map(t=>{ const r=effRes(t); const cy=cycleOf(t.date);
+    return `<div class="tcard" data-id="${t.id}"><img src="${t.thumb}" alt="Фото теста"><div class="meta"><span>${fmt(t.date)}${t.time?' '+t.time:''}</span><span class="badge b-${r}">${RES_TXT[r]}</span></div>
+    <div class="muted">${t.ratio!=null?'T/C '+t.ratio.toFixed(2):'T/C —'}${cy?' · '+cy.day+'-й день цикла':''}${t.manualResult?' · исправлено':''}</div></div>`; }).join('');
+}
+$('testList').addEventListener('click',e=>{ const c=e.target.closest('.tcard'); if(!c) return; const t=state.tests.find(x=>x.id===c.dataset.id);
+  openEditor(t.image,{id:t.id,date:t.date,time:t.time,note:t.note,manualResult:t.manualResult,det:t.det?JSON.parse(JSON.stringify(t.det)):null,created:t.created}); });
+
+/* ================= График T/C ================= */
+function cycleList(){
+  const ps=state.periods; const out=[];
+  for(let i=0;i<ps.length;i++) out.push({start:ps[i].start, next:ps[i+1]?ps[i+1].start:null});
+  return out;
+}
+function renderChart(){
+  const cycles=cycleList(); const sel=$('cycleSel'); const S=computeStats();
+  const withTests=cycles.map((c,i)=>({...c,i,tests:state.tests.filter(t=>t.date>=c.start&&(!c.next||t.date<c.next))}));
+  const pre=state.tests.filter(t=>!cycles.length||t.date<cycles[0].start);
+  const opts=withTests.map(c=>`<option value="${c.i}">Цикл с ${fmt(c.start)}${c.next?'':' (текущий)'} — тестов: ${c.tests.length}</option>`);
+  if(pre.length) opts.unshift(`<option value="pre">До первой записи о месячных — тестов: ${pre.length}</option>`);
+  const prev=sel.value; sel.innerHTML=opts.join('');
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  else { const lastWith=[...withTests].reverse().find(c=>c.tests.length); if(lastWith) sel.value=String(lastWith.i); else if(withTests.length) sel.value=String(withTests.length-1); }
+  const box=$('chartBox'); box.querySelectorAll('svg').forEach(s=>s.remove());
+  if(!sel.options.length){ $('chartTable').innerHTML='<p class="muted">Нет данных. Отметьте месячные и добавьте фото тестов.</p>'; return; }
+  let cyc, tests;
+  if(sel.value==='pre'){ cyc=null; tests=pre; } else { cyc=withTests[Number(sel.value)]; tests=cyc.tests; }
+  const pts=tests.filter(t=>t.ratio!=null).map(t=>({t, x:cyc?diffDays(t.date,cyc.start)+1:0, y:t.ratio}));
+  if(!cyc){ const d0=pre.length?pre[0].date:todayStr(); pts.forEach(p=>p.x=diffDays(p.t.date,d0)+1); }
+  const len=cyc?(cyc.next?diffDays(cyc.next,cyc.start):Math.max(S.avgCycle, ...pts.map(p=>p.x))):Math.max(10,...pts.map(p=>p.x));
+  const ovuDay=cyc?(cyc.next?diffDays(cyc.next,cyc.start)-13:S.avgCycle-13):null;
+  const W=Math.max(320,Math.min(760,box.clientWidth||760)),H=W<500?260:320,ml=40,mr=12,mt=16,mb=40; const pw=W-ml-mr, ph=H-mt-mb;
+  const ymax=Math.max(1.5,Math.ceil((Math.max(0,...pts.map(p=>p.y))+0.1)*2)/2);
+  const X=d=>ml+(d-0.5)/len*pw, Y=v=>mt+ph-v/ymax*ph;
+  let g='';
+  for(let v=0;v<=ymax+1e-9;v+=0.5) g+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#eee5ea"/><text x="${ml-8}" y="${Y(v)+4}" font-size="12" fill="#8c8594" text-anchor="end">${v.toFixed(1).replace('.',',')}</text>`;
+  const step=W<500?(len>20?5:2):(len>40?5:len>20?2:1);
+  for(let d=1;d<=len;d+=step) g+=`<text x="${X(d)}" y="${H-mb+18}" font-size="12" fill="#8c8594" text-anchor="middle">${d}</text>`;
+  g+=`<text x="${ml+pw/2}" y="${H-4}" font-size="12" fill="#5d5765" text-anchor="middle">${cyc?'день цикла':'день от первого теста'}</text>`;
+  g+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(0.9)}" y2="${Y(0.9)}" stroke="#c0265d" stroke-dasharray="5 4" stroke-width="1.2"/><text x="${W-mr-4}" y="${Y(0.9)-6}" font-size="12" fill="#5d5765" text-anchor="end">пик ЛГ (T ≈ C) — 0,9</text>`;
+  g+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="#d88a1c" stroke-dasharray="2 4" stroke-width="1.2"/><text x="${W-mr-4}" y="${Y(0.5)-6}" font-size="12" fill="#5d5765" text-anchor="end">высокий — 0,5</text>`;
+  if(ovuDay&&ovuDay>0&&ovuDay<=len) g+=`<line x1="${X(ovuDay)}" x2="${X(ovuDay)}" y1="${mt}" y2="${mt+ph}" stroke="#2e9e62" stroke-dasharray="4 4"/><text x="${X(ovuDay)+5}" y="${mt+12}" font-size="12" fill="#2e7d52">овуляция? (оценка)</text>`;
+  g+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(0)}" y2="${Y(0)}" stroke="#cfc5cb"/>`;
+  const sorted=[...pts].sort((a,b)=>a.x-b.x||a.t.date.localeCompare(b.t.date)||(a.t.time||'').localeCompare(b.t.time||''));
+  if(sorted.length>1) g+=`<polyline fill="none" stroke="#b4407a" stroke-width="2" stroke-linejoin="round" points="${sorted.map(p=>X(p.x)+','+Y(p.y)).join(' ')}"/>`;
+  const col={peak:'#c0265d',high:'#d88a1c',low:'#6b7787',invalid:'#9e9e9e',none:'#9e9e9e'};
+  sorted.forEach((p,i)=>{ g+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="5.5" fill="${col[effRes(p.t)]}" stroke="#fff" stroke-width="2"/><circle cx="${X(p.x)}" cy="${Y(p.y)}" r="14" fill="transparent" data-i="${i}" style="cursor:pointer"/>`; });
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('role','img'); svg.setAttribute('aria-label','График соотношения T/C по дням цикла'); svg.innerHTML=g;
+  box.appendChild(svg);
+  const tip=$('tip');
+  svg.addEventListener('mousemove',e=>{ const i=e.target.dataset&&e.target.dataset.i; if(i==null){tip.style.display='none';return;}
+    const p=sorted[i]; const br=box.getBoundingClientRect(); tip.innerHTML=`${fmt(p.t.date)}${p.t.time?' '+p.t.time:''} · ${p.x}-й день<br>T/C ${p.y.toFixed(2)} · ${RES_TXT[effRes(p.t)]}`;
+    tip.style.left=(e.clientX-br.left)+'px'; tip.style.top=(e.clientY-br.top)+'px'; tip.style.display='block'; });
+  svg.addEventListener('mouseleave',()=>tip.style.display='none');
+  if(!tests.length){ $('chartTable').innerHTML='<p class="muted">В этом цикле тестов нет.</p>'; return; }
+  $('chartTable').innerHTML=`<table><tr><th>Дата</th><th>День</th><th>T/C</th><th>Результат</th></tr>`+
+    tests.map(t=>`<tr><td>${fmt(t.date)}${t.time?' '+t.time:''}</td><td>${cyc?diffDays(t.date,cyc.start)+1:'—'}</td><td>${t.ratio!=null?t.ratio.toFixed(2):'—'}</td><td><span class="badge b-${effRes(t)}">${RES_TXT[effRes(t)]}</span></td></tr>`).join('')+'</table>';
+}
+$('cycleSel').onchange=renderChart;
+
+/* ================= Резервная копия ================= */
+$('exportBtn').onclick=()=>{
+  const data={app:'moi-cikl',version:1,exportedAt:new Date().toISOString(),settings:state.settings,periods:state.periods,tests:state.tests};
+  const name='moi-cikl-backup-'+todayStr()+'.json';
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  // На телефоне — через меню «Поделиться» (можно выбрать «Сохранить в Файлы»)
+  if(matchMedia('(pointer:coarse)').matches && navigator.canShare){
+    const file=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare({files:[file]})){ navigator.share({files:[file]}).then(()=>toast('Резервная копия сохранена')).catch(()=>{}); return; }
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000); toast('Файл резервной копии сохранён в «Загрузки»');
+};
+$('importBtn').onclick=()=>$('importIn').click();
+$('importIn').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  let data; try{ data=JSON.parse(await f.text()); }catch(_){ alert('Файл не похож на резервную копию (ошибка JSON).'); return; }
+  if(!data||data.app!=='moi-cikl'||!Array.isArray(data.periods)||!Array.isArray(data.tests)){ alert('Это не резервная копия приложения «Мой цикл».'); return; }
+  const okP=data.periods.filter(p=>p&&p.id&&/^\d{4}-\d\d-\d\d$/.test(p.start));
+  const okT=data.tests.filter(t=>t&&t.id&&/^\d{4}-\d\d-\d\d$/.test(t.date)&&typeof t.image==='string'&&t.image.startsWith('data:image/'));
+  const replace=confirm(`В копии: месячных — ${okP.length}, тестов — ${okT.length}.\n\nОК — ЗАМЕНИТЬ текущие данные копией.\nОтмена — ОБЪЕДИНИТЬ (добавить к текущим).`);
+  if(replace){ await DB.clear('periods'); await DB.clear('tests'); }
+  for(const p of okP) await DB.put('periods',{id:String(p.id),start:p.start,end:p.end||'',intensity:p.intensity||'',notes:String(p.notes||'')});
+  for(const t of okT) await DB.put('tests',t);
+  if(data.settings&&data.settings.cSide){ state.settings.cSide=data.settings.cSide; await saveSettings(); }
+  await refresh(); toast('Данные загружены');
+};
+$('wipeBtn').onclick=async()=>{
+  if(!confirm('Удалить ВСЕ данные (месячные, тесты, фото)? Это нельзя отменить.')) return;
+  if(!confirm('Точно удалить? Резервная копия сделана?')) return;
+  await DB.clear('periods'); await DB.clear('tests'); await refresh(); toast('Все данные удалены');
+};
+async function renderDataInfo(){
+  let s=`Записей о месячных: ${state.periods.length}. Тестов с фото: ${state.tests.length}.`;
+  try{ if(navigator.storage&&navigator.storage.estimate){ const e=await navigator.storage.estimate(); s+=` Занято примерно ${(e.usage/1048576).toFixed(1)} МБ.`; } }catch(_){}
+  $('dataInfo').textContent=s;
+}
+
+/* ================= Навигация ================= */
+function showView(v){ state.view=v; document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); renderView(); window.scrollTo(0,0); }
+function renderView(){ const v=state.view; if(v==='cal') renderCalendar(); if(v==='fc') renderForecast(); if(v==='lh') renderTests(); if(v==='chart') renderChart(); if(v==='data') renderDataInfo(); }
+$('nav').onclick=e=>{ const b=e.target.closest('button'); if(b) showView(b.dataset.v); };
+$('cal').onclick=e=>{ const d=e.target.closest('.day'); if(d) dayModal(d.dataset.d); };
+$('periodList').onclick=e=>{ const b=e.target.closest('[data-edit]'); if(b) periodModal(state.periods.find(p=>p.id===b.dataset.edit)); };
+$('addPeriod').onclick=()=>periodModal({start:todayStr(),end:'',intensity:'',notes:''});
+$('prevM').onclick=()=>{ let {y,m}=state.month; m--; if(m<0){m=11;y--;} state.month={y,m}; renderCalendar(); };
+$('nextM').onclick=()=>{ let {y,m}=state.month; m++; if(m>11){m=0;y++;} state.month={y,m}; renderCalendar(); };
+$('todayM').onclick=()=>{ state.month=null; renderCalendar(); };
+async function refresh(){ await loadAll(); $('cSide').value=state.settings.cSide; renderView(); }
+
+(async()=>{
+  try{ await DB.open(); }catch(e){ document.querySelector('main').insertAdjacentHTML('afterbegin','<div class="warn">Не удалось открыть хранилище браузера. Откройте файл в Google Chrome или Microsoft Edge и не используйте режим «Инкогнито».</div>'); return; }
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  // Офлайн-режим (работает, когда приложение открыто по https-ссылке)
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  // iPhone: в обычной вкладке Safari данные могут стереться через 7 дней без использования
+  const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(iOS && !navigator.standalone && !matchMedia('(display-mode: standalone)').matches)
+    document.querySelector('.warn').insertAdjacentHTML('afterend','<div class="warn" style="background:#eaf1fd;color:#1d4f9c;border-color:#c9dbf6">📱 <b>Установите приложение на экран «Домой»:</b> нажмите кнопку «Поделиться» (квадрат со стрелкой) → «На экран «Домой»». Потом открывайте только через значок. В обычной вкладке Safari записи хранятся отдельно и могут удалиться, если долго не заходить.</div>');
+  await refresh();
+})();
+// для самопроверки (без сети)
+window.App={handleFiles,analyzeAuto,evaluate,makeWork,loadImage,state,refresh,DB};
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "Мой цикл",
+  "short_name": "Мой цикл",
+  "description": "Личный дневник цикла и ЛГ-тестов. Данные хранятся только на устройстве.",
+  "lang": "ru",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#faf7f5",
+  "theme_color": "#b4407a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
